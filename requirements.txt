@@ -1,0 +1,7 @@
+Flask
+flask-cors
+Flask-RESTful
+flask-sqlalchemy
+pymysql
+pandas
+Werkzeug
