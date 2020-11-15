@@ -3,6 +3,7 @@ from flask_restful import reqparse, Api
 from flask.views import MethodView
 from flask import jsonify
 from database import to_json, to_json_list, db_session
+from sqlalchemy.dialects.mysql import insert
 from werkzeug.datastructures import FileStorage
 from flask import send_file, send_from_directory
 from flask_cors import CORS
@@ -10,6 +11,7 @@ from models import Users, Questions
 from pandas import ExcelFile
 import logging
 import os
+import secrets
 
 
 app = Flask(__name__)
@@ -40,7 +42,14 @@ class Index(MethodView):
 
 class QuestionManage(MethodView):
     def get(self):
-        data = to_json_list(Questions.query.all())
+        parser = reqparse.RequestParser()
+        parser.add_argument('a', type=str)
+        parser.add_argument('uid', type=str)
+        args = parser.parse_args()
+        if args.get('a') == 'getUserQuestion':
+            data = to_json_list(Questions.query.filter(Questions.users.contains(args.get('uid'))).all())
+        else:
+            data = to_json_list(Questions.query.all())
         return {'code': 200, 'data': data}
 
     def post(self):
@@ -66,6 +75,7 @@ class QuestionManage(MethodView):
     def put(self, pk=None):
         data = []
         question_data = request.get_json()
+        print(question_data)
         db_session.query(Questions).filter_by(id=pk).update(question_data)
         db_session.commit()
         return {'code': 200, 'data': data}
@@ -87,9 +97,9 @@ class User(MethodView):
             u = Users(username=v, password=user_data.get('密码').get(k),
                       address=user_data.get('地址').get(k),
                       name=user_data.get('姓名').get(k),
-                      telephone=user_data.get('电话').get(k)
-                      )
+                      telephone=user_data.get('电话').get(k))
             u.save()
+
         data = to_json_list(Users.query.all())
         return {'code': 200, 'data': data}
 
@@ -115,19 +125,22 @@ class Download(MethodView):
         return send_from_directory(args.get('dir') or os.getcwd(), args.get('file'), as_attachment=True)
 
 
+class Login(MethodView):
+    def post(self):
+        data = {'code': 200, 'data': 'success'}
+        u = db_session.query(Users).filter_by(username=request.get_json().get('username')).first()
+        if u and u.check_password(request.get_json().get('password')):
+            token = secrets.token_hex(16)
+            db_session.query(Users).filter_by(id=u.id).update({'token': token})
+            db_session.commit()
+            data = {'code': 200, 'data': {'name': u.name, 'token': token}}
+        return data
+
+
 class Logout(MethodView):
     def post(self):
         data = {'code': 200, 'data': 'success'}
         return data
-
-
-def register_api(view, endpoint, url, pk='id', pk_type='int'):
-    view_func = view.as_view(endpoint)
-    app.add_url_rule(url, defaults={pk: None},
-                     view_func=view_func, methods=['GET',])
-    app.add_url_rule(url, view_func=view_func, methods=['POST',])
-    app.add_url_rule('%s<%s:%s>' % (url, pk_type, pk), view_func=view_func,
-                     methods=['GET', 'PUT', 'DELETE'])
 
 
 api.add_resource(Index, "/api")
@@ -138,6 +151,8 @@ api.add_resource(User, '/user', endpoint='user')
 api.add_resource(User, '/user/<int:pk>', endpoint='users')
 api.add_resource(QuestionManage, "/question", endpoint='question')
 api.add_resource(QuestionManage, "/question/<int:pk>", endpoint='questions')
+api.add_resource(Login, '/user/login', endpoint='user_login')
+api.add_resource(Logout, '/user/logout', endpoint='user_logout')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port='5000', debug=True)
