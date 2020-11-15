@@ -83,7 +83,7 @@ class QuestionManage(MethodView):
 
 class User(MethodView):
     def get(self, pk=None):
-        data = to_json_list(Users.query.all())
+        data = to_json_list(Users.query.filter(Users.name != 'admin').all())
         if pk:
             data = to_json_list(Users.query.filter_by(id=pk).all())
         return {'code': 200, 'data': data}
