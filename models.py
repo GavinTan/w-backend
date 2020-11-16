@@ -46,6 +46,7 @@ class Users(Base):
     telephone = Column(String(64), comment='电话')
     questions = Column(String(64), comment='调研问卷')
     token = Column(String(128), comment='Token', default='')
+    roles = Column(String(255), default='')
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 

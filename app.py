@@ -58,14 +58,18 @@ class QuestionManage(MethodView):
         parser.add_argument('a', type=str)
         args = parser.parse_args()
         question_data = request.get_json()
-        q = Questions.query.filter_by(title=question_data.get('title')).first()
-        if q:
-            Questions.query.filter_by(title=question_data.get('title')).update(content=question_data.get('contentList')).save()
-        else:
-            Questions(title=question_data.get('title'),
-                      content=question_data.get('contentList'),
-                      start_at=question_data.get('surveyTime')[0],
-                      end_at=question_data.get('surveyTime')[1]).save()
+        if args.get('a') == 'add':
+            q = Questions.query.filter_by(title=question_data.get('title')).first()
+            if q:
+                Questions.query.filter_by(title=question_data.get('title')).update(content=question_data.get('contentList')).save()
+            else:
+                Questions(title=question_data.get('title'),
+                          content=question_data.get('contentList'),
+                          start_at=question_data.get('surveyTime')[0],
+                          end_at=question_data.get('surveyTime')[1]).save()
+        if args.get('a') == 'result':
+            print(question_data)
+
         return {'code': 200, 'data': data}
 
     def delete(self, pk=None):
@@ -75,7 +79,6 @@ class QuestionManage(MethodView):
     def put(self, pk=None):
         data = []
         question_data = request.get_json()
-        print(question_data)
         db_session.query(Questions).filter_by(id=pk).update(question_data)
         db_session.commit()
         return {'code': 200, 'data': data}
@@ -83,7 +86,13 @@ class QuestionManage(MethodView):
 
 class User(MethodView):
     def get(self, pk=None):
+        parser = reqparse.RequestParser()
+        parser.add_argument('a', type=str)
+        parser.add_argument('token', type=str)
+        args = parser.parse_args()
         data = to_json_list(Users.query.all())
+        if args.get('a') == 'getUserInfo':
+            data = to_json(Users.query.filter_by(token=args.get('token')).first())
         if pk:
             data = to_json_list(Users.query.filter_by(id=pk).all())
         return {'code': 200, 'data': data}
@@ -129,11 +138,17 @@ class Login(MethodView):
     def post(self):
         data = {'code': 200, 'data': 'success'}
         u = db_session.query(Users).filter_by(username=request.get_json().get('username')).first()
-        if u and u.check_password(request.get_json().get('password')):
-            token = secrets.token_hex(16)
-            db_session.query(Users).filter_by(id=u.id).update({'token': token})
-            db_session.commit()
-            data = {'code': 200, 'data': {'name': u.name, 'token': token}}
+        if u:
+            if u.check_password(request.get_json().get('password')):
+                token = secrets.token_hex(16)
+                db_session.query(Users).filter_by(id=u.id).update({'token': token})
+                db_session.commit()
+                data['data'] = {'token': token}
+            else:
+                data['error'] = {'message': '密码错误！'}
+        else:
+            data['error'] = {'message': '用户不存在！'}
+
         return data
 
 
