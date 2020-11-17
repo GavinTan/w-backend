@@ -50,11 +50,17 @@ class QuestionManage(MethodView):
 
         data = to_json_list(Questions.query.all())
         if args.get('a') == 'getUserQuestion':
-            data = to_json_list(Questions.query.filter(Questions.users.contains(args.get('uid'))).all())
-            for i in data:
+
+            data = []
+            for i in to_json_list(Questions.query.all()):
+                users = i.get('users') or ''
+                user_list = users.split(',')
                 qs = QuestionResult.query.filter_by(uid=args.get('uid'), title=i.get('title')).first()
                 if qs:
                     i['fill'] = True
+
+                if args.get('uid') in user_list:
+                    data.append(i)
 
         if pk:
             data = to_json(Questions.query.filter_by(id=pk).first())
