@@ -91,7 +91,7 @@ class Users(Base):
 
 
 if __name__ == '__main__':
-    # Base.metadata.drop_all(bind=engine)
-    # Base.metadata.create_all(bind=engine)
-    Base.metadata.tables["question_result"].drop(bind=engine)
-    Base.metadata.tables["question_result"].create(bind=engine)
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
+    # Base.metadata.tables["question_result"].drop(bind=engine)
+    # Base.metadata.tables["question_result"].create(bind=engine)
