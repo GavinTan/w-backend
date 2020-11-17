@@ -41,7 +41,8 @@ class QuestionResult(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(64), index=True, comment='问卷标题')
     result = Column(JSON, default=[], comment='调研结果')
-    user = Column(Integer, ForeignKey('users.id'), comment='调研人员')
+    user = Column(String(64), comment='调研人员')
+    uid = Column(Integer, comment='uid')
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -91,7 +92,7 @@ class Users(Base):
 
 
 if __name__ == '__main__':
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    # Base.metadata.tables["question_result"].drop(bind=engine)
-    # Base.metadata.tables["question_result"].create(bind=engine)
+    # Base.metadata.drop_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
+    Base.metadata.tables["question_result"].drop(bind=engine)
+    Base.metadata.tables["question_result"].create(bind=engine)

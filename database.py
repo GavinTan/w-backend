@@ -28,8 +28,11 @@ def to_json(model):
             json[col.name] = getattr(model, col.name).strftime('%Y-%m-%d %H:%M:%S')
         else:
             json[col.name] = getattr(model, col.name)
-        if col.name == 'roles' and getattr(model, col.name):
-            json[col.name] = getattr(model, col.name).split(',')
+        if col.name == 'roles':
+            if getattr(model, col.name):
+                json[col.name] = getattr(model, col.name).split(',')
+            else:
+                json[col.name] = ['']
 
     # return dumps([json])
     return json

@@ -52,7 +52,7 @@ class QuestionManage(MethodView):
         if args.get('a') == 'getUserQuestion':
             data = to_json_list(Questions.query.filter(Questions.users.contains(args.get('uid'))).all())
             for i in data:
-                qs = QuestionResult.query.filter_by(user=args.get('uid'), title=i.get('title')).first()
+                qs = QuestionResult.query.filter_by(uid=args.get('uid'), title=i.get('title')).first()
                 if qs:
                     i['fill'] = True
 
@@ -65,7 +65,7 @@ class QuestionManage(MethodView):
         if args.get('a') == 'getUserQuestionResult':
             data = []
             table_data = []
-            rs_data = to_json(QuestionResult.query.filter_by(user=args.get('uid'), title=args.get('title')).first())
+            rs_data = to_json(QuestionResult.query.filter_by(uid=args.get('uid'), title=args.get('title')).first())
             grades = {
                 '1.政府主体-1': {'grades_IV': '领导很重视', 'grades_III': '领导重视', 'grades_II': '领导比较重视', 'grades_I': '领导重视不够'},
                 '1.政府主体-2': {'grades_IV': '资金落实很到位', 'grades_III': '资金落实到位', 'grades_II': '资金落实比较到位', 'grades_I': '资金落实不够到位'},
@@ -151,13 +151,14 @@ class QuestionManage(MethodView):
                           start_at=question_data.get('surveyTime')[0],
                           end_at=question_data.get('surveyTime')[1]).save()
         if args.get('a') == 'result':
-            qs = QuestionResult.query.filter_by(title=question_data.get('title'), user=question_data.get('uid')).first()
+            u = to_json(Users.query.filter_by(id=question_data.get('uid')).first())
+            qs = QuestionResult.query.filter_by(title=question_data.get('title'), uid=question_data.get('uid')).first()
             if qs:
                 qs.result = question_data.get('content')
                 qs.save()
             else:
                 QuestionResult(title=question_data.get('title'), result=question_data.get('content'),
-                               user=question_data.get('uid')).save()
+                               user=u.get('name'), uid=question_data.get('uid')).save()
 
         return {'code': 200, 'data': data}
 
