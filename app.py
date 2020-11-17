@@ -157,6 +157,9 @@ class QuestionManage(MethodView):
                           start_at=question_data.get('surveyTime')[0],
                           end_at=question_data.get('surveyTime')[1]).save()
         if args.get('a') == 'result':
+            q = Questions.query.filter_by(title=question_data.get('title')).first()
+            q.completed_number += 1
+            q.save()
             u = to_json(Users.query.filter_by(id=question_data.get('uid')).first())
             qs = QuestionResult.query.filter_by(title=question_data.get('title'), uid=question_data.get('uid')).first()
             if qs:
