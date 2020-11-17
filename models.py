@@ -14,7 +14,7 @@ class Questions(Base):
     survey_number = Column(Integer, default=0, comment='调研人数')
     completed_number = Column(Integer, default=0, comment='完成人数')
     users = Column(String(128), comment='参与调查人员')
-    content = Column(JSON, comment='问卷内容')
+    content = Column(JSON, comment='问卷内容', default=[])
     status = Column(Boolean, default=False)
     start_at = Column(DateTime, comment='问卷开始时间')
     end_at = Column(DateTime, comment='问卷结束时间')
@@ -31,6 +31,26 @@ class Questions(Base):
 
     def destroy(self):
         db_session.delete(self)
+        return db_session.commit()
+
+
+class QuestionResult(Base):
+    __tablename__ = 'question_result'
+    __table_args__ = {'extend_existing': True}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    title = Column(String(64), index=True, comment='问卷标题')
+    result = Column(JSON, default=[], comment='调研结果')
+    user = Column(Integer, ForeignKey('users.id'), comment='调研人员')
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    def to_json(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+    def save(self):
+        if self.id is None:
+            db_session.add(self)
         return db_session.commit()
 
 
@@ -71,5 +91,7 @@ class Users(Base):
 
 
 if __name__ == '__main__':
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    # Base.metadata.drop_all(bind=engine)
+    # Base.metadata.create_all(bind=engine)
+    Base.metadata.tables["question_result"].drop(bind=engine)
+    Base.metadata.tables["question_result"].create(bind=engine)

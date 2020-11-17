@@ -3,12 +3,13 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.mysql import insert
 import datetime
+import os
 
-db_user = 'root'
-db_pass = 'abcu123456'
-db_host = '127.0.0.1'
-db_name = 'w'
-engine = create_engine(f'mysql+pymysql://{db_user}:{db_pass}@{db_host}/{db_name}', convert_unicode=True)
+db_user = os.environ.get("W_DB_USER") or 'root'
+db_pass = os.environ.get("W_DB_PASSWORD") or 'abcu123456'
+db_host = os.environ.get("W_DB_HOST") or '127.0.0.1'
+db_name = os.environ.get("W_DB_NAME") or 'w'
+engine = create_engine(f'mysql+pymysql://{db_user}:{db_pass}@{db_host}/{db_name}', convert_unicode=True, pool_recycle=30)
 db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine))
