@@ -55,6 +55,9 @@ class QuestionManage(MethodView):
         if pk:
             data = to_json(Questions.query.filter_by(id=pk).first())
 
+        if args.get('a') == 'getQuestionResult':
+            data = to_json_list(QuestionResult.query.all())
+
         if args.get('a') == 'getUserQuestionResult':
             data = []
             table_data = []
@@ -120,7 +123,7 @@ class QuestionManage(MethodView):
                     if i.get('content') == k:
                         i['c'] = v.get('total_score')
 
-            data = {'title': '松材线虫病防控绩效评估综合评价表（定性）', 'data': table_data}
+            data = {'title': rs_data.get('title'), 'data': table_data}
 
         return {'code': 200, 'data': data}
 
