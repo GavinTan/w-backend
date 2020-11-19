@@ -94,47 +94,45 @@ class QuestionManageView(viewsets.ModelViewSet):
             rs_data = QuestionResult.objects.filter(Q(user=uid) & Q(title=title)).values().first()
 
             result = rs_data.get('result')
-            total_score_list = []
             score = {}
+
             for result_index, result_value in enumerate(result):
                 index = result_index + 1
-                d = {'id': index, 'content': result_value.get('title'), 'item': '<strong>评价结果</strong>', 'evaluate': '',
-                     'grades_IV': '<strong>优秀</strong>', 'grades_III': '<strong>良好</strong>',
-                     'grades_II': '<strong>一般</strong>', 'grades_I': '<strong>较差</strong>', 'c': '', 'default': True}
-                table_data.append(d)
+                section_total_score_list = []
+                section_total_points_list = []
                 for section_index, section_value in enumerate(result_value.get('section_list')):
                     subentry_score_list = []
                     item_name = f"{section_index + 1}.{section_value.get('title')}"
+
+                    section_data = dict()
+                    section_data['id'] = index
+                    section_data['content'] = result_value.get('title')
+                    section_data['item'] = item_name
+                    section_data['evaluate'] = ''
+
                     for item in section_value.get('item_list'):
-                        section_data = dict()
-                        section_data['id'] = index
-                        section_data['content'] = result_value.get('title')
-                        section_data['item'] = item.get('title')
-                        section_data['evaluate'] = ''
-                        section_data['grades_IV'] = ''
-                        section_data['grades_III'] = ''
-                        section_data['grades_II'] = ''
-                        section_data['grades_I'] = ''
-                        section_data['c'] = ''
-
-                        table_data.append(section_data)
-
                         subentry_score_list.append(int(item.get('scoring')) if item.get('scoring').isdigit() else 0)
 
-                    item_score_list = score.get(result_value.get('title')).get('score_list') if score.get(result_value.get('title')) else None
-                    if item_score_list:
-                        item_score_list.append(sum(subentry_score_list))
-                        score[result_value.get('title')]['total_score'] = sum(item_score_list)
-                    else:
-                        score[result_value.get('title')] = {'score_list': [sum(subentry_score_list)], 'total_score': sum(subentry_score_list)}
-                        score[result_value.get('title')]['score_list'] = [sum(subentry_score_list)]
+                    section_data['score'] = round(sum(subentry_score_list) / int(section_value.get('score')) * 100)
+                    section_data['score_list'] = subentry_score_list
+                    table_data.append(section_data)
 
+                    section_total_score_list.append(int(section_value.get('score')))
+                    section_total_points_list.append(sum(subentry_score_list))
+                score[result_value.get('title')] = {'weight': int(result_value.get('weights')), 'section_total_points': sum(section_total_points_list), 'section_total_score': sum(section_total_score_list)}
+
+            table_total_score_list = []
             for k, v in score.items():
                 for i in table_data:
                     if i.get('content') == k:
-                        i['c'] = v.get('total_score')
+                        i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
+                        if not score.get('total_score'):
+                            score[k]['total_score'] = round(v.get('section_total_points') * v.get('weight') / 100)
 
-            data = {'title': rs_data.get('title'), 'data': table_data}
+            for i in score:
+                table_total_score_list.append(score.get(i).get('total_score'))
+
+            data = {'title': rs_data.get('title'), 'data': table_data, 'tableTotalScore': sum(table_total_score_list)}
             return Response(data, status=status.HTTP_200_OK)
 
         return super().list(request, *args, **kwargs)
