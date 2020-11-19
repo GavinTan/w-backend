@@ -162,4 +162,4 @@ REST_FRAMEWORK = {
     # )
 }
 
-UPLOAD_PATH = BASE_DIR.joinpath('upload')
+UPLOAD_PATH = BASE_DIR.joinpath('uploads')
