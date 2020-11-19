@@ -163,3 +163,5 @@ REST_FRAMEWORK = {
 }
 
 UPLOAD_PATH = BASE_DIR.joinpath('uploads')
+os.makedirs(UPLOAD_PATH, exist_ok=True)
+FRONTEND_BASE_API = os.environ.get("FRONTEND_BASE_API") or ''

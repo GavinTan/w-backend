@@ -50,9 +50,8 @@ class FileUploadView(viewsets.ViewSet):
 class FileDownloadView(viewsets.ViewSet):
     def list(self, request):
         file = request.query_params.get('file', None)
-        print(file)
         if file:
-            return redirect(f'/static/{file}')
+            return redirect(f'{settings.FRONTEND_BASE_API}/static/{file}')
         return Response({'error': '文件不存在'})
 
 
@@ -87,7 +86,7 @@ class QuestionManageView(viewsets.ModelViewSet):
             return Response(data, status=status.HTTP_200_OK)
 
         if a == 'getQuestionResult':
-            return redirect('/questionResult')
+            return redirect(f'{settings.FRONTEND_BASE_API}/questionResult')
 
         if a == 'getUserQuestionResult':
             data = []
@@ -214,7 +213,7 @@ class UserView(viewsets.ModelViewSet):
                          'telephone': table_data.get('电话').get(k)}
             Users.objects.update_or_create(defaults=user_data, username=v)
 
-        return redirect('/user')
+        return redirect(f'{settings.FRONTEND_BASE_API}/user')
 
     @action(methods=['delete'], detail=False, url_path='multipleDelete')
     def multiple_delete(self, request, *args, **kwargs):
