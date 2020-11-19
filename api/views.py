@@ -126,7 +126,7 @@ class QuestionManageView(viewsets.ModelViewSet):
                 for i in table_data:
                     if i.get('content') == k:
                         i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
-                        if not score.get('total_score'):
+                        if not v.get('total_score'):
                             score[k]['total_score'] = round(v.get('section_total_points') * v.get('weight') / 100)
 
             for i in score:
