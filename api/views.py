@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from pandas import ExcelFile
+from api.utils import get_opinion
 from .serializers import *
 from .models import *
 import os
@@ -92,14 +93,16 @@ class QuestionManageView(viewsets.ModelViewSet):
             data = []
             table_data = []
             rs_data = QuestionResult.objects.filter(Q(user=uid) & Q(title=title)).values().first()
-
             result = rs_data.get('result')
             score = {}
+            opinion = {}
 
             for result_index, result_value in enumerate(result):
                 index = result_index + 1
                 section_total_score_list = []
                 section_total_points_list = []
+                section_opinion = ""
+
                 for section_index, section_value in enumerate(result_value.get('section_list')):
                     subentry_score_list = []
                     item_name = f"{section_index + 1}.{section_value.get('title')}"
@@ -108,23 +111,26 @@ class QuestionManageView(viewsets.ModelViewSet):
                     section_data['id'] = index
                     section_data['content'] = result_value.get('title')
                     section_data['item'] = item_name
-                    section_data['evaluate'] = ''
+                    section_data['opinion'] = ''
 
                     for item in section_value.get('item_list'):
                         subentry_score_list.append(int(item.get('scoring')) if item.get('scoring').isdigit() else 0)
 
-                    section_data['score'] = round(sum(subentry_score_list) / int(section_value.get('score')) * 100)
+                    section_score = round(sum(subentry_score_list) / int(section_value.get('score')) * 100)
+                    section_opinion += get_opinion(section_score, section_value.get('opinion_list'))
+                    section_data['score'] = section_score
                     section_data['score_list'] = subentry_score_list
                     table_data.append(section_data)
 
                     section_total_score_list.append(int(section_value.get('score')))
                     section_total_points_list.append(sum(subentry_score_list))
                 score[result_value.get('title')] = {'weight': int(result_value.get('weights')), 'section_total_points': sum(section_total_points_list), 'section_total_score': sum(section_total_score_list)}
-
+                opinion[result_value.get('title')] = section_opinion
             table_total_score_list = []
             for k, v in score.items():
                 for i in table_data:
                     if i.get('content') == k:
+                        i['opinion'] = opinion.get(i.get('content'))
                         i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
                         if not v.get('total_score'):
                             score[k]['total_score'] = round(v.get('section_total_points') * v.get('weight') / 100)
@@ -142,9 +148,14 @@ class QuestionManageView(viewsets.ModelViewSet):
         a = request.query_params.get('a', None)
         question_data = request.data
         if a == 'add':
-            q = {'title': question_data.get('title'), 'content': question_data.get('content'),
-                 'start_at': question_data.get('surveyTime')[0], 'end_at': question_data.get('surveyTime')[1]}
-
+            q = {
+                'title': question_data.get('title'),
+                'content': question_data.get('content'),
+                'users': question_data.get('users'),
+                'survey_number': question_data.get('survey_number'),
+                'start_at': question_data.get('surveyTime')[0],
+                'end_at': question_data.get('surveyTime')[1]
+            }
             self.queryset.update_or_create(defaults=q, id=question_data.get('id'))
 
         if a == 'result':
@@ -178,7 +189,7 @@ class QuestionResultView(viewsets.ModelViewSet):
             del_list_id = json.loads(request.data.get('list_id'))
             if del_list_id:
                 self.model.objects.filter(id__in=del_list_id).delete()
-                return Response({}, status.HTTP_204_NO_CONTENT)
+                return Response({}, status.HTTP_200_OK)
             else:
                 return Response({}, status.HTTP_404_NOT_FOUND)
 
@@ -190,8 +201,8 @@ class UserView(viewsets.ModelViewSet):
     model = Users
     serializer_class = UsersSerializer
 
-    def get_queryset(self):
-        return self.queryset.filter(~Q(username='admin'))
+    # def get_queryset(self):
+    #     return self.queryset.filter(~Q(username='admin'))
 
     def list(self, request, *args, **kwargs):
         a = request.query_params.get('a', None)
@@ -219,7 +230,7 @@ class UserView(viewsets.ModelViewSet):
             del_list_id = json.loads(request.data.get('list_id'))
             if del_list_id:
                 self.queryset.filter(id__in=del_list_id).delete()
-                return Response({}, status.HTTP_204_NO_CONTENT)
+                return Response({}, status.HTTP_200_OK)
             else:
                 return Response({}, status.HTTP_404_NOT_FOUND)
 

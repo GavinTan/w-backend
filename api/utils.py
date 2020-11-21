@@ -38,3 +38,19 @@ class CustomModelMixin(object):
         serializer = self.get_serializer(self.get_object())
         super().destroy(*args, **kwargs)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+def get_opinion(section_score, section_opinion_list):
+    res = ""
+    for section_opinion_index, section_opinion in enumerate(section_opinion_list):
+        title = section_opinion.get('title')
+        if section_score >= 95:
+            grade = section_opinion.get('grade1')
+        elif 95 <= section_score >= 80:
+            grade = section_opinion.get('grade2')
+        elif 80 <= section_score >= 70:
+            grade = section_opinion.get('grade3')
+        else:
+            grade = section_opinion.get('grade4')
+        res += title.replace('*', grade) + '\n'
+    return res
