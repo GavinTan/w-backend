@@ -20,6 +20,7 @@ import string
 import secrets
 import json
 
+
 # Create your views here.
 
 
@@ -43,7 +44,8 @@ class FileUploadView(viewsets.ViewSet):
                     for chunk in file_obj.chunks():
                         f.write(chunk)
                 os.system('dos2unix {}'.format(file))
-            return Response(filename, status.HTTP_201_CREATED)
+
+            return Response("模板.xlsx", status.HTTP_201_CREATED)
         else:
             return Response({'error': '参数不正确'})
 
@@ -121,12 +123,17 @@ class QuestionManageView(viewsets.ModelViewSet):
                     section_data['score'] = section_score
                     section_data['score_list'] = subentry_score_list
                     table_data.append(section_data)
-
                     section_total_score_list.append(int(section_value.get('score')))
                     section_total_points_list.append(sum(subentry_score_list))
-                score[result_value.get('title')] = {'weight': int(result_value.get('weights')), 'section_total_points': sum(section_total_points_list), 'section_total_score': sum(section_total_score_list)}
+                score[result_value.get('title')] = {
+                    'weight': int(result_value.get('weights')),
+                    'section_total_points': sum(section_total_points_list),
+                    'section_total_score': sum(section_total_score_list),
+                    'opinion_list': result_value.get('opinion_list')
+                }
                 opinion[result_value.get('title')] = section_opinion
             table_total_score_list = []
+
             for k, v in score.items():
                 for i in table_data:
                     if i.get('content') == k:
@@ -134,8 +141,17 @@ class QuestionManageView(viewsets.ModelViewSet):
                         i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
                         if not v.get('total_score'):
                             score[k]['total_score'] = round(v.get('section_total_points') * v.get('weight') / 100)
-
+            overall_opinion = [y for x in [i.get('opinion_list') for i in score.values()] for y in x]
             for i in score:
+                section_total_points = score.get(i).get('section_total_points')
+                evaluation = {
+                    "id": 3,
+                    "content": "整体评价",
+                    "item": i,
+                    "opinion": get_opinion(section_total_points, overall_opinion),
+                    "totalScore": section_total_points
+                }
+                table_data.append(evaluation)
                 table_total_score_list.append(score.get(i).get('total_score'))
 
             data = {'title': rs_data.get('title'), 'data': table_data, 'tableTotalScore': sum(table_total_score_list)}
@@ -177,6 +193,11 @@ class QuestionManageView(viewsets.ModelViewSet):
         self.queryset.filter(pk=pk).update(**request.data)
         return Response({})
 
+    def delete(self, request, *args, **kwargs):
+        del_id = request.data.get('id')
+        self.model.objects.filter(id=del_id).delete()
+        return Response({}, status.HTTP_200_OK)
+
 
 class QuestionResultView(viewsets.ModelViewSet):
     queryset = QuestionResult.objects
@@ -200,16 +221,24 @@ class UserView(viewsets.ModelViewSet):
     queryset = Users.objects
     model = Users
     serializer_class = UsersSerializer
+    pagination_class = UsersPagination
 
     # def get_queryset(self):
     #     return self.queryset.filter(~Q(username='admin'))
+
+    def get_queryset(self):
+        return Users.objects.filter(~Q(username='admin')).order_by('-created_at')
 
     def list(self, request, *args, **kwargs):
         a = request.query_params.get('a', None)
         token = request.query_params.get('token', None)
         if a == 'getUserInfo':
             return Response(self.queryset.filter(token=token).values().first() or {})
-        return super().list(request, *args, **kwargs)
+
+        users = self.get_queryset()
+        page = self.paginate_queryset(users)
+        serializer = self.get_serializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
     def create(self, request, *args, **kwargs):
         file_path = settings.UPLOAD_PATH
@@ -217,7 +246,7 @@ class UserView(viewsets.ModelViewSet):
         df = excel.parse(excel.sheet_names[0])
         table_data = df.to_dict()
         for k, v in table_data.get('用户名').items():
-            user_data = {'username': v, 'password': table_data.get('密码').get(k),
+            user_data = {'username': v, 'password': table_data.get('密码').get(k), 'roles': ['guest'],
                          'address': table_data.get('地址').get(k), 'name': table_data.get('姓名').get(k),
                          'telephone': table_data.get('电话').get(k)}
             Users.objects.update_or_create(defaults=user_data, username=v)
@@ -240,7 +269,7 @@ class UserView(viewsets.ModelViewSet):
 class Login(viewsets.ViewSet):
     def create(self, request, *args, **kwargs):
         data = {}
-        # Users(username='admin', name='admin', password='123456', roles=['admin']).save()
+        # Users(username='wg', name='wg', password='123456', roles=['guest']).save()
         u = Users.objects.filter(username=request.data.get('username'))
         if u:
             if u.first().check_password(request.data.get('password')):
@@ -251,7 +280,6 @@ class Login(viewsets.ViewSet):
                 data['error'] = {'message': '密码错误！'}
         else:
             data['error'] = {'message': '用户不存在！'}
-
         return Response(data)
 
 

@@ -6,7 +6,6 @@ from rest_framework.response import Response
 
 class CustomJSONRenderer(JSONRenderer):
     def render(self, data, accepted_media_type=None, renderer_context=None):
-
         status_code = renderer_context.get('response').status_code
         if status.is_success(status_code):
             response_data = {'code': 200, 'data': data if data else []}
