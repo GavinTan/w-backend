@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from pandas import ExcelFile
-from api.utils import get_opinion, get_score
+from api.utils import get_opinion, get_result_data
 from .serializers import *
 from .models import *
 import os
@@ -93,70 +93,11 @@ class QuestionManageView(viewsets.ModelViewSet):
             return redirect(f'{settings.FRONTEND_BASE_API}/questionResult')
 
         if a == 'getUserQuestionResult':
-            data = []
-            table_data = []
-            rs_data = QuestionResult.objects.filter(Q(user=uid) & Q(title=title)).values().first()
-            result = rs_data.get('result')
-            score = {}
-            opinion = {}
 
-            for result_index, result_value in enumerate(result):
-                index = result_index + 1
-                section_total_score_list = []
-                section_total_points_list = []
-                section_opinion = ""
+            rs_data = QuestionResult.objects.filter(Q(user=uid) & Q(title=title)).first()
+            # result = rs_data.get('result')
 
-                for section_index, section_value in enumerate(result_value.get('section_list')):
-                    subentry_score_list = []
-                    item_name = f"{section_index + 1}.{section_value.get('title')}"
-
-                    section_data = dict()
-                    section_data['id'] = index
-                    section_data['content'] = result_value.get('title')
-                    section_data['item'] = item_name
-                    section_data['opinion'] = ''
-
-                    for item in section_value.get('item_list'):
-                        subentry_score_list.append(int(item.get('scoring')) if item.get('scoring').isdigit() else 0)
-
-                    section_score = round(sum(subentry_score_list) / int(section_value.get('score')) * 100)
-                    section_opinion += get_opinion(section_score, section_value.get('opinion_list'))
-                    section_data['score'] = section_score
-                    section_data['score_list'] = subentry_score_list
-                    table_data.append(section_data)
-                    section_total_score_list.append(int(section_value.get('score')))
-                    section_total_points_list.append(sum(subentry_score_list))
-                score[result_value.get('title')] = {
-                    'weight': int(result_value.get('weights')),
-                    'section_total_points': sum(section_total_points_list),
-                    'section_total_score': sum(section_total_score_list),
-                    'opinion_list': result_value.get('opinion_list')
-                }
-                opinion[result_value.get('title')] = section_opinion
-            table_total_score_list = []
-
-            for k, v in score.items():
-                for i in table_data:
-                    if i.get('content') == k:
-                        i['compute_weights_score'] = round(v.get('section_total_points') * (v.get('weight') / 100))
-                        i['opinion'] = opinion.get(i.get('content'))
-                        i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
-                        if not v.get('total_score'):
-                            score[k]['total_score'] = round(v.get('section_total_points') * v.get('weight') / 100)
-            overall_opinion = [y for x in [i.get('opinion_list') for i in score.values()] for y in x]
-            for i in score:
-                section_total_points = score.get(i).get('section_total_points')
-                evaluation = {
-                    "id": 5,
-                    "content": "整体评价",
-                    "item": i,
-                    "opinion": get_opinion(section_total_points, overall_opinion),
-                    "totalScore": section_total_points
-                }
-                table_data.append(evaluation)
-                table_total_score_list.append(score.get(i).get('total_score'))
-
-            data = {'title': rs_data.get('title'), 'data': table_data, 'tableTotalScore': sum(table_total_score_list)}
+            data = {'id': rs_data.id, 'title': rs_data.title, 'data': rs_data.result, 'tableTotalScore': rs_data.total_score}
             return Response(data, status=status.HTTP_200_OK)
 
         return super().list(request, *args, **kwargs)
@@ -187,8 +128,8 @@ class QuestionManageView(viewsets.ModelViewSet):
                 qs.save()
             else:
                 qid = question_data.get('id')
-                result = question_data.get('content')
-                total_score, content_score_list = get_score(result)
+                content_data = question_data.get('content')
+                result, total_score, content_score_list = get_result_data(content_data)
                 QuestionResult(
                     question_id=qid,
                     title=question_data.get('title'),
@@ -215,6 +156,11 @@ class QuestionResultView(viewsets.ModelViewSet):
     queryset = QuestionResult.objects
     model = QuestionResult
     serializer_class = QuestionResultSerializer
+
+    def update(self, request, *args, **kwargs):
+        pk = kwargs.get('pk')
+        self.queryset.filter(pk=pk).update(**request.data)
+        return Response({})
 
     @action(methods=['delete'], detail=False, url_path='multipleDelete')
     def multiple_delete(self, request, *args, **kwargs):
@@ -262,29 +208,29 @@ class UserView(viewsets.ModelViewSet):
             if first:
                 return Response({}, status.HTTP_400_BAD_REQUEST)
             Users.objects.create(**request.data)
-        return Response({}, status.HTTP_200_OK)
+            return Response({}, status.HTTP_200_OK)
 
-        # file_path = settings.UPLOAD_PATH
-        # excel = ExcelFile(file_path.joinpath(request.data.get('file').get('data')))
-        # df = excel.parse(excel.sheet_names[0])
-        # table_data = df.to_dict()
-        # items = []
-        # username_list = []
-        #
-        # for k, v in table_data.get('用户名').items():
-        #     username_list.append(v)
-        #     items.append(Users(
-        #         username=v,
-        #         password=str(table_data.get('密码').get(k)),
-        #         roles=['guest'],
-        #         address=table_data.get('地址').get(k),
-        #         name=table_data.get('姓名').get(k),
-        #         telephone=table_data.get('电话').get(k)
-        #     ))
-        # user_list = [value.get('username') for value in Users.objects.filter(username__in=username_list).values('username')]
-        # filter_items = list(filter(lambda i: i.username not in user_list, items))
-        # Users.objects.bulk_create(filter_items)
-        # return redirect(f'{settings.FRONTEND_BASE_API}/user')
+        file_path = settings.UPLOAD_PATH
+        excel = ExcelFile(file_path.joinpath(request.data.get('file').get('data')))
+        df = excel.parse(excel.sheet_names[0])
+        table_data = df.to_dict()
+        items = []
+        username_list = []
+
+        for k, v in table_data.get('用户名').items():
+            username_list.append(v)
+            items.append(Users(
+                username=v,
+                password=str(table_data.get('密码').get(k)),
+                roles=['guest'],
+                address=table_data.get('地址').get(k),
+                name=table_data.get('姓名').get(k),
+                telephone=table_data.get('电话').get(k)
+            ))
+        user_list = [value.get('username') for value in Users.objects.filter(username__in=username_list).values('username')]
+        filter_items = list(filter(lambda i: i.username not in user_list, items))
+        Users.objects.bulk_create(filter_items)
+        return redirect(f'{settings.FRONTEND_BASE_API}/user')
 
     @action(methods=['delete'], detail=False, url_path='multipleDelete')
     def multiple_delete(self, request, *args, **kwargs):

@@ -88,7 +88,7 @@ DATABASES = {
         'PORT': os.environ.get("W_DB_PORT") or 3306,
         'NAME': os.environ.get("W_DB_NAME") or 'question',
         'USER': os.environ.get("W_DB_USER") or 'root',
-        'PASSWORD': os.environ.get("W_DB_PASSWORD") or '12345678',
+        'PASSWORD': os.environ.get("W_DB_PASSWORD") or 'abcu123456',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'"
         },

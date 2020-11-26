@@ -75,3 +75,86 @@ def get_score(data_list):
             'score': content_scoring
         })
     return total_score, content_score_list
+
+
+def get_result_data(result):
+    table_data = []
+    content_score_list = []
+    score = {}
+    opinion = {}
+
+    for result_index, result_value in enumerate(result):
+        index = result_index + 1
+        section_total_score_list = []
+        section_total_points_list = []
+        section_opinion = ""
+
+        for section_index, section_value in enumerate(result_value.get('section_list')):
+            subentry_score_list = []
+            item_name = f"{section_index + 1}.{section_value.get('title')}"
+
+            section_data = dict()
+            section_data['id'] = index
+            section_data['content'] = result_value.get('title')
+            section_data['item'] = item_name
+            section_data['opinion'] = ''
+
+            for item in section_value.get('item_list'):
+                subentry_score_list.append(int(item.get('scoring')) if item.get('scoring').isdigit() else 0)
+
+            section_score = round(sum(subentry_score_list) / int(section_value.get('score')) * 100)
+            section_opinion += get_opinion(section_score, section_value.get('opinion_list'))
+            section_data['score'] = section_score
+            section_data['score_list'] = subentry_score_list
+            table_data.append(section_data)
+            section_total_score_list.append(int(section_value.get('score')))
+            section_total_points_list.append(sum(subentry_score_list))
+        score[result_value.get('title')] = {
+            'weight': int(result_value.get('weights')),
+            'section_total_points': sum(section_total_points_list),
+            'section_total_score': sum(section_total_score_list),
+            'opinion_list': result_value.get('opinion_list')
+        }
+        opinion[result_value.get('title')] = section_opinion
+    table_total_score_list = []
+
+    for k, v in score.items():
+        for i in table_data:
+            if i.get('content') == k:
+                i['compute_weights_score'] = round(v.get('section_total_points') * (v.get('weight') / 100))
+                i['opinion'] = opinion.get(i.get('content'))
+                i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
+                if not v.get('total_score'):
+                    score[k]['total_score'] = round(v.get('section_total_points') * v.get('weight') / 100)
+    overall_opinion = [y for x in [i.get('opinion_list') for i in score.values()] for y in x]
+    overall_evaluation_list = []
+    special_evaluation_list = []
+
+    for i in score:
+        section_total_points = score.get(i).get('section_total_points')
+        content_score_list.append({
+            'title': i,
+            'score': round(score.get(i).get('section_total_points') * (score.get(i).get('weight') / 100))
+        })
+        special_evaluation = {
+            "id": 6,
+            "content": "特别评价",
+            "item": i,
+            "opinion": '',
+            "totalScore": section_total_points
+        }
+        overall_evaluation = {
+            "id": 5,
+            "content": "整体评价",
+            "item": i,
+            "opinion": get_opinion(section_total_points, overall_opinion),
+            "totalScore": section_total_points
+        }
+        overall_evaluation_list.append(overall_evaluation)
+        special_evaluation_list.append(special_evaluation)
+        # table_data.append(evaluation)
+        table_total_score_list.append(score.get(i).get('total_score'))
+    table_data += special_evaluation_list
+    table_data += overall_evaluation_list
+
+    return table_data, sum(table_total_score_list), content_score_list
