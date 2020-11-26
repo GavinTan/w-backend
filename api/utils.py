@@ -53,3 +53,25 @@ def get_opinion(section_score, section_opinion_list):
             grade = section_opinion.get('grade4')
         res += title.replace('*', grade) + '\n'
     return res
+
+
+def get_score(data_list):
+    total_score = 0
+    content_score_list = []
+    for content in data_list:
+        content_weights = int(content.get('weights'))
+        section_list = content.get('section_list')
+        content_scoring = 0
+        section_total_score = 0
+        for section in section_list:
+            section_score = int(section.get('score'))
+            section_total_score += section_score
+            for item in section.get('item_list'):
+                content_scoring += int(item.get('scoring'))
+        content_scoring = round((content_scoring / section_total_score * 100) * (content_weights / 100))
+        total_score += content_scoring
+        content_score_list.append({
+            'title': content.get('title'),
+            'score': content_scoring
+        })
+    return total_score, content_score_list

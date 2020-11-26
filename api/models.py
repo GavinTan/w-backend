@@ -21,6 +21,7 @@ class Questions(models.Model):
 
 
 class Users(models.Model):
+
     class Meta:
         verbose_name = '用户列表'
 
@@ -50,5 +51,9 @@ class QuestionResult(models.Model):
     title = models.CharField('问卷标题', max_length=128)
     result = models.JSONField('调研结果', default=list)
     user = models.ForeignKey(Users, on_delete=models.CASCADE)
+    total_score = models.IntegerField('测评表总分', default=0)
+    content_score_list = models.JSONField('分项总分', default=list)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    question = models.ForeignKey('Questions', related_query_name='question_result', on_delete=models.CASCADE)

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from pandas import ExcelFile
-from api.utils import get_opinion
+from api.utils import get_opinion, get_score
 from .serializers import *
 from .models import *
 import os
@@ -19,6 +19,7 @@ import random
 import string
 import secrets
 import json
+import hashlib
 
 
 # Create your views here.
@@ -45,7 +46,7 @@ class FileUploadView(viewsets.ViewSet):
                         f.write(chunk)
                 os.system('dos2unix {}'.format(file))
 
-            return Response("模板.xlsx", status.HTTP_201_CREATED)
+            return Response(filename, status.HTTP_201_CREATED)
         else:
             return Response({'error': '参数不正确'})
 
@@ -137,6 +138,7 @@ class QuestionManageView(viewsets.ModelViewSet):
             for k, v in score.items():
                 for i in table_data:
                     if i.get('content') == k:
+                        i['compute_weights_score'] = round(v.get('section_total_points') * (v.get('weight') / 100))
                         i['opinion'] = opinion.get(i.get('content'))
                         i['totalScore'] = round(v.get('section_total_points') / v.get('section_total_score') * 100)
                         if not v.get('total_score'):
@@ -145,7 +147,7 @@ class QuestionManageView(viewsets.ModelViewSet):
             for i in score:
                 section_total_points = score.get(i).get('section_total_points')
                 evaluation = {
-                    "id": 3,
+                    "id": 5,
                     "content": "整体评价",
                     "item": i,
                     "opinion": get_opinion(section_total_points, overall_opinion),
@@ -176,7 +178,7 @@ class QuestionManageView(viewsets.ModelViewSet):
 
         if a == 'result':
             q = self.queryset.filter(title=question_data.get('title')).first()
-            q.completed_number += 1
+            # q.completed_number += 1
             q.save()
             u = Users.objects.filter(id=question_data.get('uid')).first()
             qs = QuestionResult.objects.filter(Q(title=question_data.get('title')) & Q(user=u)).first()
@@ -184,7 +186,17 @@ class QuestionManageView(viewsets.ModelViewSet):
                 qs.result = question_data.get('content')
                 qs.save()
             else:
-                QuestionResult(title=question_data.get('title'), result=question_data.get('content'), user=u).save()
+                qid = question_data.get('id')
+                result = question_data.get('content')
+                total_score, content_score_list = get_score(result)
+                QuestionResult(
+                    question_id=qid,
+                    title=question_data.get('title'),
+                    result=result,
+                    user=u,
+                    total_score=total_score,
+                    content_score_list=content_score_list
+                ).save()
 
         return Response(data)
 
@@ -231,27 +243,48 @@ class UserView(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         a = request.query_params.get('a', None)
+        keyword = request.query_params.get('keyword', None)
         token = request.query_params.get('token', None)
         if a == 'getUserInfo':
             return Response(self.queryset.filter(token=token).values().first() or {})
-
         users = self.get_queryset()
+        if keyword:
+            return Response({'data': users.values('id', 'name')})
         page = self.paginate_queryset(users)
         serializer = self.get_serializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
     def create(self, request, *args, **kwargs):
-        file_path = settings.UPLOAD_PATH
-        excel = ExcelFile(file_path.joinpath(request.data.get('file').get('data')))
-        df = excel.parse(excel.sheet_names[0])
-        table_data = df.to_dict()
-        for k, v in table_data.get('用户名').items():
-            user_data = {'username': v, 'password': table_data.get('密码').get(k), 'roles': ['guest'],
-                         'address': table_data.get('地址').get(k), 'name': table_data.get('姓名').get(k),
-                         'telephone': table_data.get('电话').get(k)}
-            Users.objects.update_or_create(defaults=user_data, username=v)
 
-        return redirect(f'{settings.FRONTEND_BASE_API}/user')
+        username = request.data.get('username')
+        if username:
+            first = Users.objects.filter(username=username).first()
+            if first:
+                return Response({}, status.HTTP_400_BAD_REQUEST)
+            Users.objects.create(**request.data)
+        return Response({}, status.HTTP_200_OK)
+
+        # file_path = settings.UPLOAD_PATH
+        # excel = ExcelFile(file_path.joinpath(request.data.get('file').get('data')))
+        # df = excel.parse(excel.sheet_names[0])
+        # table_data = df.to_dict()
+        # items = []
+        # username_list = []
+        #
+        # for k, v in table_data.get('用户名').items():
+        #     username_list.append(v)
+        #     items.append(Users(
+        #         username=v,
+        #         password=str(table_data.get('密码').get(k)),
+        #         roles=['guest'],
+        #         address=table_data.get('地址').get(k),
+        #         name=table_data.get('姓名').get(k),
+        #         telephone=table_data.get('电话').get(k)
+        #     ))
+        # user_list = [value.get('username') for value in Users.objects.filter(username__in=username_list).values('username')]
+        # filter_items = list(filter(lambda i: i.username not in user_list, items))
+        # Users.objects.bulk_create(filter_items)
+        # return redirect(f'{settings.FRONTEND_BASE_API}/user')
 
     @action(methods=['delete'], detail=False, url_path='multipleDelete')
     def multiple_delete(self, request, *args, **kwargs):
@@ -269,10 +302,11 @@ class UserView(viewsets.ModelViewSet):
 class Login(viewsets.ViewSet):
     def create(self, request, *args, **kwargs):
         data = {}
+        username = request.data.get('username')
         # Users(username='wg', name='wg', password='123456', roles=['guest']).save()
         u = Users.objects.filter(username=request.data.get('username'))
         if u:
-            if u.first().check_password(request.data.get('password')):
+            if u.first().password == request.data.get('password') or u.first().check_password(request.data.get('password')):
                 token = secrets.token_hex(16)
                 u.update(token=token)
                 data = {'token': token}

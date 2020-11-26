@@ -4,11 +4,13 @@ from .models import *
 from rest_framework import pagination
 from rest_framework.response import Response
 from collections import OrderedDict
+from rest_framework import status
 
 
 class QuestionsSerializer(serializers.ModelSerializer):
 
     survey_number = serializers.SerializerMethodField()
+    completed_number = serializers.SerializerMethodField()
 
     class Meta:
         model = Questions
@@ -16,6 +18,9 @@ class QuestionsSerializer(serializers.ModelSerializer):
 
     def get_survey_number(self, obj):
         return len(obj.users.split(',')) if obj.users else 0
+
+    def get_completed_number(self, obj):
+        return obj.questionresult_set.count()
 
 
 class UsersPagination(pagination.PageNumberPagination):
@@ -39,7 +44,7 @@ class UsersSerializer(serializers.ModelSerializer):
 class QuestionResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuestionResult
-        fields = '__all__'
+        exclude = ('result',)
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
