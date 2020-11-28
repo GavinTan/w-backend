@@ -144,7 +144,7 @@ def get_result_data(result):
             "totalScore": section_total_points
         }
         overall_evaluation = {
-            "id": 5,
+            "id": 7,
             "content": "整体评价",
             "item": i,
             "opinion": get_opinion(section_total_points, overall_opinion),

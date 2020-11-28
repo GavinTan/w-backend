@@ -97,7 +97,13 @@ class QuestionManageView(viewsets.ModelViewSet):
             rs_data = QuestionResult.objects.filter(Q(user=uid) & Q(title=title)).first()
             # result = rs_data.get('result')
 
-            data = {'id': rs_data.id, 'title': rs_data.title, 'data': rs_data.result, 'tableTotalScore': rs_data.total_score}
+            data = {
+                'id': rs_data.id,
+                'title': rs_data.title,
+                'data': rs_data.result,
+                'tableTotalScore': rs_data.total_score,
+                'end_at': rs_data.question.end_at.timestamp() * 1000
+            }
             return Response(data, status=status.HTTP_200_OK)
 
         return super().list(request, *args, **kwargs)
