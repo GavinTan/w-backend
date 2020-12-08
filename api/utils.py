@@ -137,18 +137,18 @@ def get_result_data(result):
             'score': round(score.get(i).get('section_total_points') * (score.get(i).get('weight') / 100))
         })
         special_evaluation = {
-            "id": 6,
+            "id": len(score) + 1,
             "content": "特别评价",
             "item": i,
             "opinion": '',
-            "totalScore": section_total_points
+            "totalScore": ''
         }
         overall_evaluation = {
-            "id": 7,
+            "id": len(score) + 2,
             "content": "整体评价",
             "item": i,
             "opinion": get_opinion(section_total_points, overall_opinion),
-            "totalScore": section_total_points
+            "totalScore": ''
         }
         overall_evaluation_list.append(overall_evaluation)
         special_evaluation_list.append(special_evaluation)
@@ -158,3 +158,10 @@ def get_result_data(result):
     table_data += overall_evaluation_list
 
     return table_data, sum(table_total_score_list), content_score_list
+
+
+def excel_number_handle(data_list):
+    data_list = list(map(lambda x: x if isinstance(x, float) else 0, data_list))
+    res = list(map(lambda x: round(x) if x % 1 == 0.0 else x, [round(x) if len(str(x).split('.')) >= 2 and len(str(x).split('.')[1]) > 3 else x for x in data_list]))
+    return res
+

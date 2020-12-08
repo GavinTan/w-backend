@@ -11,15 +11,16 @@ from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework import status
 from pandas import ExcelFile
-from api.utils import get_opinion, get_result_data
+from api.utils import get_result_data, excel_number_handle
 from .serializers import *
 from .models import *
+import datetime
 import os
 import random
 import string
 import secrets
 import json
-import hashlib
+import xlrd
 
 
 # Create your views here.
@@ -95,13 +96,14 @@ class QuestionManageView(viewsets.ModelViewSet):
         if a == 'getUserQuestionResult':
 
             rs_data = QuestionResult.objects.filter(Q(user=uid) & Q(title=title)).first()
-            # result = rs_data.get('result')
 
             data = {
                 'id': rs_data.id,
                 'title': rs_data.title,
+                'name': rs_data.user.name,
                 'data': rs_data.result,
                 'tableTotalScore': rs_data.total_score,
+                'fill_time': (rs_data.created_at + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S"),
                 'end_at': rs_data.question.end_at.timestamp() * 1000
             }
             return Response(data, status=status.HTTP_200_OK)
@@ -156,6 +158,61 @@ class QuestionManageView(viewsets.ModelViewSet):
         del_id = request.data.get('id')
         self.model.objects.filter(id=del_id).delete()
         return Response({}, status.HTTP_200_OK)
+
+
+class StatisticsView(viewsets.ModelViewSet):
+    model = StatisticsData
+    queryset = StatisticsData.objects
+    serializer_class = StatisticsDataSerializer
+
+    def list(self, request, *args, **kwargs):
+        return Response(StatisticsData.objects.first().data, status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        base_path = settings.UPLOAD_PATH
+        file_path = base_path.joinpath(request.data.get('file').get('data'))
+        map_data = []
+        workbook = xlrd.open_workbook(file_path)
+        for index, value in enumerate(workbook.sheet_names()):
+
+            sheet1_object = workbook.sheet_by_index(index)
+            nrows = sheet1_object.nrows
+            ncols = sheet1_object.ncols
+
+            type_list = []
+
+            for i in range(0, ncols):
+                all_col = sheet1_object.col_values(i, 0, nrows)
+                item = {
+                    'title': all_col[0],
+                    'type': [{
+                        'title': all_col[1],
+                        'unit': all_col[2],
+                        'list': excel_number_handle(all_col[3: sheet1_object.nrows])
+                    }]
+                }
+                res = list(filter(lambda x: x.get('title') == all_col[0], type_list))
+
+                if len(res):
+                    type_list_index = type_list.index(res[0])
+                    res[0].get('type').append({
+                        'title': all_col[1],
+                        'unit': all_col[2],
+                        'list': excel_number_handle(all_col[3: sheet1_object.nrows])
+                    })
+                    type_list[type_list_index] = res[0]
+                else:
+                    type_list.append(item)
+
+            areaData = {
+                'title': value,
+                'id': index + 1,
+                'type': type_list
+            }
+
+            map_data.append(areaData)
+        StatisticsData.objects.update_or_create(data=map_data, id=1)
+        return Response(map_data, status.HTTP_200_OK)
 
 
 class QuestionResultView(viewsets.ModelViewSet):
@@ -255,7 +312,7 @@ class Login(viewsets.ViewSet):
     def create(self, request, *args, **kwargs):
         data = {}
         username = request.data.get('username')
-        # Users(username='wg', name='wg', password='123456', roles=['guest']).save()
+        # Users(username='admin', name='admin', password='123456', roles=['admin']).save()
         u = Users.objects.filter(username=request.data.get('username'))
         if u:
             if u.first().password == request.data.get('password') or u.first().check_password(request.data.get('password')):

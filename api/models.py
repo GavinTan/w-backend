@@ -57,3 +57,10 @@ class QuestionResult(models.Model):
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     question = models.ForeignKey('Questions', related_query_name='question_result', on_delete=models.CASCADE)
+
+
+class StatisticsData(models.Model):
+
+    data = models.JSONField('统计图数据', default=list)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)

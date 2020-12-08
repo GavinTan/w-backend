@@ -41,6 +41,12 @@ class UsersSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class StatisticsDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StatisticsData
+        fields = '__all__'
+
+
 class QuestionResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuestionResult
