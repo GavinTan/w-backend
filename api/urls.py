@@ -11,6 +11,7 @@ router.register(r'user/login', views.Login, basename='login')
 router.register(r'logout', views.Logout, basename='logout')
 router.register(r'user', views.UserView, basename='user')
 router.register(r'questionResult', views.QuestionResultView, basename='question_result')
+router.register(r'opinion', views.OpinionManageView, basename='opinion')
 
 
 urlpatterns = [

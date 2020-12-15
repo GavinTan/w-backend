@@ -63,6 +63,8 @@ class QuestionResultSerializer(serializers.ModelSerializer):
         return representation
 
 
-
-
+class OpinionManageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StatisticsData
+        fields = '__all__'
 

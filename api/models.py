@@ -64,3 +64,14 @@ class StatisticsData(models.Model):
     data = models.JSONField('统计图数据', default=list)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+
+class OpinionManage(models.Model):
+    class Meta:
+        verbose_name = '评价管理'
+
+    question_result = models.ForeignKey(QuestionResult, on_delete=models.CASCADE)
+    data = models.JSONField('评价数据')
+    user = models.ForeignKey(Users, on_delete=models.CASCADE)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
