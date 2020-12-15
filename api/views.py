@@ -250,6 +250,7 @@ class OpinionManageView(viewsets.ModelViewSet):
             data = {
                 'id': opinion_data.id,
                 'title': opinion_data.question_result.title,
+                'area_name': opinion_data.question_result.user.name,
                 'data': opinion_data.data,
                 'tableTotalScore': opinion_data.question_result.total_score,
                 'user': opinion_data.user.name,
@@ -262,6 +263,7 @@ class OpinionManageView(viewsets.ModelViewSet):
             data = {
                 'id': rs_data.id,
                 'title': rs_data.title,
+                'area_name': rs_data.user.name,
                 'data': rs_data.result,
                 'tableTotalScore': rs_data.total_score,
             }

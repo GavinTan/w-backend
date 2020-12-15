@@ -14,7 +14,7 @@ class QuestionsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Questions
-        exclude = ('content',)
+        fields = '__all__'
 
     def get_survey_number(self, obj):
         return len(obj.users.split(',')) if obj.users else 0
@@ -60,6 +60,8 @@ class QuestionResultSerializer(serializers.ModelSerializer):
         representation['name'] = instance.user.name
         representation['address'] = instance.user.address
         representation['telephone'] = instance.user.telephone
+
+        representation['question_id'] = instance.question.id
         return representation
 
 
@@ -67,4 +69,5 @@ class OpinionManageSerializer(serializers.ModelSerializer):
     class Meta:
         model = StatisticsData
         fields = '__all__'
+
 
