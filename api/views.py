@@ -254,7 +254,7 @@ class OpinionManageView(viewsets.ModelViewSet):
                 'tableTotalScore': opinion_data.question_result.total_score,
                 'user': opinion_data.user.name,
                 'edit': True,
-                'update_at': (opinion_data.created_at + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+                'update_at': (opinion_data.update_at + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
             }
         else:
             rs_data = QuestionResult.objects.filter(id=qsid).first()
