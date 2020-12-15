@@ -14,7 +14,7 @@ class QuestionsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Questions
-        fields = '__all__'
+        exclude = ('content',)
 
     def get_survey_number(self, obj):
         return len(obj.users.split(',')) if obj.users else 0
