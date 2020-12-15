@@ -238,6 +238,44 @@ class QuestionResultView(viewsets.ModelViewSet):
         return Response({'error': '没有删除的list_id列表'})
 
 
+class OpinionManageView(viewsets.ModelViewSet):
+    model = OpinionManage
+    queryset = OpinionManage.objects
+    serializer_class = OpinionManageSerializer
+
+    def list(self, request, *args, **kwargs):
+        qsid = request.query_params.get('qsid', None)
+        opinion_data = self.queryset.filter(question_result_id=qsid).first()
+        if opinion_data:
+            data = {
+                'id': opinion_data.id,
+                'title': opinion_data.question_result.title,
+                'data': opinion_data.data,
+                'tableTotalScore': opinion_data.question_result.total_score,
+                'user': opinion_data.user.name,
+                'edit': True,
+                'update_at': (opinion_data.created_at + datetime.timedelta(hours=8)).strftime("%Y-%m-%d %H:%M:%S")
+            }
+        else:
+            rs_data = QuestionResult.objects.filter(id=qsid).first()
+
+            data = {
+                'id': rs_data.id,
+                'title': rs_data.title,
+                'data': rs_data.result,
+                'tableTotalScore': rs_data.total_score,
+            }
+        return Response(data)
+
+    def create(self, request, *args, **kwargs):
+        qsid = request.data.get('qsid')
+        data = request.data.get('data')
+        uid = request.data.get('uid')
+        self.queryset.update_or_create(defaults={'question_result': QuestionResult.objects.filter(id=qsid).first(),
+                                                 'data': data, 'user': Users.objects.filter(id=uid).first()}, question_result_id=qsid)
+        return Response({'error': '没有删除的list_id列表'})
+
+
 class UserView(viewsets.ModelViewSet):
     queryset = Users.objects
     model = Users
